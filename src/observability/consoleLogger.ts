@@ -7,7 +7,7 @@ function write(level: "info" | "warn" | "error", message: string, context?: Reco
     ...context
   };
 
-  console[level](JSON.stringify(entry));
+  console.log(JSON.stringify(entry));
 }
 
 export const consoleLogger: Logger = {

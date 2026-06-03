@@ -1,0 +1,5 @@
+{"droneId":"drone-001","timestamp":"2026-06-03T20:00:00.000Z","eventType":"SENSOR_READING","statusCode":"OK","telemetryData":{"latitude":54.5973,"longitude":-5.9301}}
+{"droneId":"drone-002","timestamp":"2026-06-03T20:01:00.000Z","eventType":"BATTERY_STATUS","statusCode":"WARN","telemetryData":{"batteryLevel":18}
+this is not json
+{"droneId":"drone-003","timestamp":"2026-06-03T20:02:00.000Z","eventType":"ROUTE_ADJUSTED","statusCode":"OK","telemetryData":{"latitude":51.5072,"longitude":-0.1276,"newWaypoint":"customer-118"}}
+{"droneId":"drone-004","timestamp":"2026-06-03T20:03:00.000Z","eventType":"ERROR","statusCode":"ERROR","telemetryData":{"errorCode":"MOTOR_STALL"}

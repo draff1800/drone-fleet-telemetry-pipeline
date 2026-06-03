@@ -1,7 +1,7 @@
-import { processTelemetryBatch } from "../../src/core/telemetry/processTelemetryBatch";
-import type { TelemetryRecord } from "../../src/core/telemetry/telemetryRecord";
-import type { Logger } from "../../src/ports/logger";
-import type { TelemetryRepository } from "../../src/ports/telemetryRepository";
+import { processTelemetryBatch } from "../../../../src/core/telemetry/processTelemetryBatch";
+import type { TelemetryRecord } from "../../../../src/core/telemetry/telemetryRecord";
+import type { Logger } from "../../../../src/ports/logger";
+import type { TelemetryRepository } from "../../../../src/ports/telemetryRepository";
 
 const logger: Logger = {
   info: jest.fn(),
@@ -30,12 +30,13 @@ describe("processTelemetryBatch", () => {
         {
           droneId: "drone-001",
           timestamp: "2026-06-03T20:00:00.000Z",
-          eventType: "location_update",
+          eventType: "SENSOR_READING",
           statusCode: "OK",
           telemetryData: {
             latitude: 54.5973,
             longitude: -5.9301,
-            altitudeMeters: 120
+            altitudeMeters: 120,
+            temperatureCelsius: 12.4
           }
         }
       ],
@@ -45,10 +46,10 @@ describe("processTelemetryBatch", () => {
 
     expect(result).toEqual({ accepted: 1, rejected: 0 });
     expect(repository.records).toHaveLength(1);
-    expect(repository.records[0]?.eventType).toBe("location_update");
+    expect(repository.records[0]?.eventType).toBe("SENSOR_READING");
   });
 
-  it("stores battery telemetry records", async () => {
+  it("stores records with optional battery telemetry", async () => {
     const repository = new TestTelemetryRepository();
 
     const result = await processTelemetryBatch(
@@ -56,10 +57,10 @@ describe("processTelemetryBatch", () => {
         {
           droneId: "drone-001",
           timestamp: "2026-06-03T20:01:00.000Z",
-          eventType: "battery_update",
-          statusCode: "LOW_BATTERY",
+          eventType: "BATTERY_STATUS",
+          statusCode: "WARN",
           telemetryData: {
-            batteryPercent: 18
+            batteryLevel: 18
           }
         }
       ],
@@ -69,7 +70,7 @@ describe("processTelemetryBatch", () => {
 
     expect(result).toEqual({ accepted: 1, rejected: 0 });
     expect(repository.records).toHaveLength(1);
-    expect(repository.records[0]?.eventType).toBe("battery_update");
+    expect(repository.records[0]?.eventType).toBe("BATTERY_STATUS");
   });
 
   it("rejects invalid records without failing the whole batch", async () => {
@@ -80,21 +81,21 @@ describe("processTelemetryBatch", () => {
         {
           droneId: "drone-001",
           timestamp: "2026-06-03T20:00:00.000Z",
-          eventType: "location_update",
+          eventType: "SENSOR_READING",
           statusCode: "OK",
           telemetryData: {
             latitude: 54.5973,
-            longitude: -5.9301,
-            altitudeMeters: 120
+            longitude: -5.9301
           }
         },
         {
+          sourceLine: 2,
           droneId: "",
           timestamp: "not-a-date",
-          eventType: "battery_update",
+          eventType: "BATTERY_STATUS",
           statusCode: "",
           telemetryData: {
-            batteryPercent: 101
+            batteryLevel: 101
           }
         }
       ],
@@ -105,9 +106,34 @@ describe("processTelemetryBatch", () => {
     expect(result).toEqual({ accepted: 1, rejected: 1 });
     expect(repository.records).toHaveLength(1);
     expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith("Rejected invalid telemetry record", {
+      sourceLine: 2,
+      issues: [
+        {
+          path: "droneId",
+          code: "too_small",
+          message: "Too small: expected string to have >=1 characters"
+        },
+        {
+          path: "timestamp",
+          code: "invalid_format",
+          message: "Invalid ISO datetime"
+        },
+        {
+          path: "statusCode",
+          code: "invalid_value",
+          message: 'Invalid option: expected one of "OK"|"WARN"|"ERROR"'
+        },
+        {
+          path: "telemetryData.batteryLevel",
+          code: "too_big",
+          message: "Too big: expected number to be <=100"
+        }
+      ]
+    });
   });
 
-  it("rejects telemetry data that does not match the event type", async () => {
+  it("rejects out-of-range telemetry data", async () => {
     const repository = new TestTelemetryRepository();
 
     const result = await processTelemetryBatch(
@@ -115,12 +141,11 @@ describe("processTelemetryBatch", () => {
         {
           droneId: "drone-001",
           timestamp: "2026-06-03T20:01:00.000Z",
-          eventType: "battery_update",
+          eventType: "SENSOR_READING",
           statusCode: "OK",
           telemetryData: {
-            latitude: 54.5973,
-            longitude: -5.9301,
-            altitudeMeters: 120
+            latitude: 91,
+            longitude: -181
           }
         }
       ],

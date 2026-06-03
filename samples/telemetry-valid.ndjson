@@ -1,0 +1,5 @@
+{"droneId":"drone-001","timestamp":"2026-06-03T20:00:00.000Z","eventType":"SENSOR_READING","statusCode":"OK","telemetryData":{"latitude":54.5973,"longitude":-5.9301,"altitudeMeters":120,"speedMetersPerSecond":14.2}}
+{"droneId":"drone-002","timestamp":"2026-06-03T20:01:00.000Z","eventType":"BATTERY_STATUS","statusCode":"WARN","telemetryData":{"batteryLevel":18,"estimatedMinutesRemaining":9}}
+{"droneId":"drone-003","timestamp":"2026-06-03T20:02:00.000Z","eventType":"DELIVERY_COMPLETED","statusCode":"OK","telemetryData":{"packageId":"pkg-123","latitude":51.5072,"longitude":-0.1276,"deliveredAt":"2026-06-03T20:02:00.000Z"}}
+{"droneId":"drone-004","timestamp":"2026-06-03T20:03:00.000Z","eventType":"ROUTE_ADJUSTED","statusCode":"OK","telemetryData":{"latitude":53.4808,"longitude":-2.2426,"previousWaypoint":"warehouse-north","newWaypoint":"customer-042","reason":"traffic"}}
+{"droneId":"drone-005","timestamp":"2026-06-03T20:04:00.000Z","eventType":"ERROR","statusCode":"ERROR","telemetryData":{"errorCode":"MOTOR_STALL","batteryLevel":42,"recoverable":true}}
