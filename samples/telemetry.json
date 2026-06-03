@@ -1,0 +1,33 @@
+[
+  {
+    "droneId": "drone-001",
+    "timestamp": "2026-06-03T20:00:00.000Z",
+    "eventType": "location_update",
+    "statusCode": "OK",
+    "telemetryData": {
+      "latitude": 54.5973,
+      "longitude": -5.9301,
+      "altitudeMeters": 120
+    }
+  },
+  {
+    "droneId": "drone-002",
+    "timestamp": "2026-06-03T20:01:00.000Z",
+    "eventType": "battery_update",
+    "statusCode": "LOW_BATTERY",
+    "telemetryData": {
+      "batteryPercent": 18
+    }
+  },
+  {
+    "droneId": "",
+    "timestamp": "invalid",
+    "eventType": "location_update",
+    "statusCode": "",
+    "telemetryData": {
+      "latitude": 999,
+      "longitude": -5.93,
+      "altitudeMeters": -10
+    }
+  }
+]
