@@ -1,17 +1,17 @@
 import { telemetryRecordSchema, type TelemetryRecord } from "./telemetryInput";
 import type {
-  ProcessedTelemetryRecord,
+  ProcessedRecord,
   ProcessingSummary,
-  RawTelemetryMessage,
-  RejectedTelemetryError,
-  RejectedTelemetryRecord
+  RawMessage,
+  RejectedError,
+  RejectedRecord
 } from "./telemetryTypes";
 import type { Logger } from "../../ports/observability/logger";
 import type { RejectedRecordRepository } from "../../ports/persistence/rejectedRecordRepository";
-import type { TelemetryRepository } from "../../ports/persistence/telemetryRepository";
+import type { RecordRepository } from "../../ports/persistence/telemetryRepository";
 
 export interface ProcessTelemetryDependencies {
-  telemetryRepository: TelemetryRepository;
+  telemetryRepository: RecordRepository;
   rejectedRecordRepository: RejectedRecordRepository;
   logger: Logger;
   now?: () => Date;
@@ -23,7 +23,7 @@ function formatIssuePath(path: PropertyKey[]): string {
 
 function formatValidationIssues(
   issues: Array<{ path: PropertyKey[]; code?: string; message: string }>
-): RejectedTelemetryError[] {
+): RejectedError[] {
   return issues.map((issue) => ({
     path: formatIssuePath(issue.path),
     code: issue.code ?? "unknown",
@@ -35,7 +35,7 @@ function createRecordId(record: TelemetryRecord): string {
   return `${record.droneId}#${record.timestamp}#${record.eventType}`;
 }
 
-function transformTelemetryRecord(record: TelemetryRecord, processedAt: string): ProcessedTelemetryRecord {
+function transformTelemetryRecord(record: TelemetryRecord, processedAt: string): ProcessedRecord {
   return {
     recordId: createRecordId(record),
     processedAt,
@@ -44,11 +44,11 @@ function transformTelemetryRecord(record: TelemetryRecord, processedAt: string):
 }
 
 function createRejectedRecord(
-  message: RawTelemetryMessage,
-  reason: RejectedTelemetryRecord["reason"],
-  errors: RejectedTelemetryError[],
+  message: RawMessage,
+  reason: RejectedRecord["reason"],
+  errors: RejectedError[],
   rejectedAt: string
-): RejectedTelemetryRecord {
+): RejectedRecord {
   return {
     messageId: message.messageId,
     body: message.body,
@@ -59,11 +59,11 @@ function createRejectedRecord(
 }
 
 export async function processTelemetryMessages(
-  messages: RawTelemetryMessage[],
+  messages: RawMessage[],
   dependencies: ProcessTelemetryDependencies
 ): Promise<ProcessingSummary> {
-  const processedRecords: ProcessedTelemetryRecord[] = [];
-  const rejectedRecords: RejectedTelemetryRecord[] = [];
+  const processedRecords: ProcessedRecord[] = [];
+  const rejectedRecords: RejectedRecord[] = [];
   const now = dependencies.now ?? (() => new Date());
 
   for (const message of messages) {

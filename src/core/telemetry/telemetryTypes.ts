@@ -1,28 +1,28 @@
 import type { TelemetryRecord } from "./telemetryInput";
 
-export interface RawTelemetryMessage {
+export interface RawMessage {
   messageId?: string;
   body: string;
 }
 
-export interface ProcessedTelemetryRecord extends TelemetryRecord {
+export interface ProcessedRecord extends TelemetryRecord {
   recordId: string;
   processedAt: string;
 }
 
 export type RejectionReason = "INVALID_JSON" | "VALIDATION_FAILED";
 
-export interface RejectedTelemetryError {
+export interface RejectedError {
   path: string;
   code: string;
   message: string;
 }
 
-export interface RejectedTelemetryRecord {
+export interface RejectedRecord {
   messageId?: string;
   body: string;
   reason: RejectionReason;
-  errors: RejectedTelemetryError[];
+  errors: RejectedError[];
   rejectedAt: string;
 }
 

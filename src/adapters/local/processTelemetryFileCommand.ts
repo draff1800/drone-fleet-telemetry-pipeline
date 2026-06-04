@@ -7,25 +7,21 @@ async function main(): Promise<void> {
     logger: consoleLogger
   });
 
-  consoleLogger.info("Processed telemetry file locally", {
-    inputPath: result.inputPath,
-    rejectedRecordsPath: result.rejectedRecordsPath,
-    ...result.summary,
-    persistedTelemetryRecords: result.persistedTelemetryRecords,
-    persistedRejectedRecords: result.persistedRejectedRecords
-  });
-
   console.log([
-    "Telemetry processing summary",
+    "",
+    "Telemetry Processing Summary:",
+    "---",
     `Input: ${result.inputPath}`,
     `Received: ${result.summary.received}`,
     `Processed: ${result.summary.processed}`,
     `Rejected: ${result.summary.rejected}`,
-    `Output (Rejected records): ${result.rejectedRecordsPath}`
+    `Output (processed records): ${result.outputPaths.processedRecords}`,
+    `Output (rejected records): ${result.outputPaths.rejectedRecords}`
   ].join("\n"));
 }
 
 void main().catch((error: unknown) => {
+  console.error();
   consoleLogger.error("Failed to process telemetry file locally", {
     error: error instanceof Error ? error.message : String(error)
   });

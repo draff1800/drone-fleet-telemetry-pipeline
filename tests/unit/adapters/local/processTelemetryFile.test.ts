@@ -54,8 +54,9 @@ describe("processTelemetryFile", () => {
     ]);
   });
 
-  it("processes a local NDJSON file and writes rejected records for inspection", async () => {
+  it("processes a local NDJSON file and writes records for inspection", async () => {
     const inputPath = join(tmpRoot, "mixed.ndjson");
+    const processedRecordsPath = join(tmpRoot, "output", "processed-records.json");
     const rejectedRecordsPath = join(tmpRoot, "output", "rejected-records.json");
 
     await writeFile(
@@ -75,19 +76,35 @@ describe("processTelemetryFile", () => {
 
     const result = await processTelemetryFile({
       inputPath,
-      rejectedRecordsPath,
+      outputPaths: {
+        processedRecords: processedRecordsPath,
+        rejectedRecords: rejectedRecordsPath
+      },
       logger
     });
 
     expect(result.summary).toEqual({ received: 3, processed: 1, rejected: 2 });
-    expect(result.persistedTelemetryRecords).toBe(1);
-    expect(result.persistedRejectedRecords).toBe(2);
-    expect(result.rejectedRecordsPath).toBe(rejectedRecordsPath);
+    expect(result.outputPaths.processedRecords).toBe(processedRecordsPath);
+    expect(result.outputPaths.rejectedRecords).toBe(rejectedRecordsPath);
+    expect(result.records.processed).toHaveLength(1);
+    expect(result.records.rejected).toHaveLength(2);
+
+    const processedRecords = JSON.parse(await readFile(processedRecordsPath, "utf8")) as Array<{
+      droneId: string;
+      recordId: string;
+    }>;
 
     const rejectedRecords = JSON.parse(await readFile(rejectedRecordsPath, "utf8")) as Array<{
       messageId: string;
       reason: string;
     }>;
+
+    expect(processedRecords).toEqual([
+      expect.objectContaining({
+        droneId: "drone-001",
+        recordId: "drone-001#2026-06-03T20:00:00.000Z#SENSOR_READING"
+      })
+    ]);
 
     expect(rejectedRecords).toEqual([
       expect.objectContaining({

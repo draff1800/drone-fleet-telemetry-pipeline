@@ -1,5 +1,5 @@
-import type { RejectedTelemetryRecord } from "../../core/telemetry/telemetryTypes";
+import type { RejectedRecord } from "../../core/telemetry/telemetryTypes";
 
 export interface RejectedRecordRepository {
-  saveBatch(records: RejectedTelemetryRecord[]): Promise<void>;
+  saveBatch(records: RejectedRecord[]): Promise<void>;
 }

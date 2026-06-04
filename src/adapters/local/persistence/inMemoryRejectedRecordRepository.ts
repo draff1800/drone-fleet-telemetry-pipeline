@@ -1,14 +1,14 @@
-import type { RejectedTelemetryRecord } from "../../../core/telemetry/telemetryTypes";
+import type { RejectedRecord } from "../../../core/telemetry/telemetryTypes";
 import type { RejectedRecordRepository } from "../../../ports/persistence/rejectedRecordRepository";
 
 export class InMemoryRejectedRecordRepository implements RejectedRecordRepository {
-  private readonly records: RejectedTelemetryRecord[] = [];
+  private readonly records: RejectedRecord[] = [];
 
-  async saveBatch(records: RejectedTelemetryRecord[]): Promise<void> {
+  async saveBatch(records: RejectedRecord[]): Promise<void> {
     this.records.push(...records);
   }
 
-  all(): RejectedTelemetryRecord[] {
+  all(): RejectedRecord[] {
     return [...this.records];
   }
 }

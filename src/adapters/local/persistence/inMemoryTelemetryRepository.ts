@@ -1,14 +1,14 @@
-import type { ProcessedTelemetryRecord } from "../../../core/telemetry/telemetryTypes";
-import type { TelemetryRepository } from "../../../ports/persistence/telemetryRepository";
+import type { ProcessedRecord } from "../../../core/telemetry/telemetryTypes";
+import type { RecordRepository } from "../../../ports/persistence/telemetryRepository";
 
-export class InMemoryTelemetryRepository implements TelemetryRepository {
-  private readonly records: ProcessedTelemetryRecord[] = [];
+export class InMemoryRecordRepository implements RecordRepository {
+  private readonly records: ProcessedRecord[] = [];
 
-  async saveBatch(records: ProcessedTelemetryRecord[]): Promise<void> {
+  async saveBatch(records: ProcessedRecord[]): Promise<void> {
     this.records.push(...records);
   }
 
-  all(): ProcessedTelemetryRecord[] {
+  all(): ProcessedRecord[] {
     return [...this.records];
   }
 }

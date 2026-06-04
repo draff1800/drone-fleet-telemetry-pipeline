@@ -1,5 +1,5 @@
-import type { ProcessedTelemetryRecord } from "../../core/telemetry/telemetryTypes";
+import type { ProcessedRecord } from "../../core/telemetry/telemetryTypes";
 
-export interface TelemetryRepository {
-  saveBatch(records: ProcessedTelemetryRecord[]): Promise<void>;
+export interface RecordRepository {
+  saveBatch(records: ProcessedRecord[]): Promise<void>;
 }

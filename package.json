@@ -7,7 +7,7 @@
     "test": "jest --config jest.config.cjs --runInBand",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "process:sample": "tsx src/adapters/local/processTelemetryFileCommand.ts samples/mixed-telemetry.ndjson"
+    "process:sample": "tsx src/adapters/local/processTelemetryFileCommand.ts samples/telemetry-mixed.ndjson"
   },
   "keywords": [],
   "author": "",

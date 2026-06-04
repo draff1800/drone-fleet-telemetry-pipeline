@@ -1,12 +1,12 @@
 import { processTelemetryMessages } from "../../../../src/core/telemetry/processTelemetryMessages";
 import type {
-  ProcessedTelemetryRecord,
-  RawTelemetryMessage,
-  RejectedTelemetryRecord
+  ProcessedRecord,
+  RawMessage,
+  RejectedRecord
 } from "../../../../src/core/telemetry/telemetryTypes";
 import type { Logger } from "../../../../src/ports/observability/logger";
 import type { RejectedRecordRepository } from "../../../../src/ports/persistence/rejectedRecordRepository";
-import type { TelemetryRepository } from "../../../../src/ports/persistence/telemetryRepository";
+import type { RecordRepository } from "../../../../src/ports/persistence/telemetryRepository";
 
 const fixedNow = new Date("2026-06-04T10:00:00.000Z");
 
@@ -16,21 +16,21 @@ const logger: Logger = {
   error: jest.fn()
 };
 
-class TestTelemetryRepository implements TelemetryRepository {
-  readonly records: ProcessedTelemetryRecord[] = [];
-  readonly saveBatch = jest.fn(async (records: ProcessedTelemetryRecord[]): Promise<void> => {
+class TestRecordRepository implements RecordRepository {
+  readonly records: ProcessedRecord[] = [];
+  readonly saveBatch = jest.fn(async (records: ProcessedRecord[]): Promise<void> => {
     this.records.push(...records);
   });
 }
 
 class TestRejectedRecordRepository implements RejectedRecordRepository {
-  readonly records: RejectedTelemetryRecord[] = [];
-  readonly saveBatch = jest.fn(async (records: RejectedTelemetryRecord[]): Promise<void> => {
+  readonly records: RejectedRecord[] = [];
+  readonly saveBatch = jest.fn(async (records: RejectedRecord[]): Promise<void> => {
     this.records.push(...records);
   });
 }
 
-function validMessage(overrides: Record<string, unknown> = {}): RawTelemetryMessage {
+function validMessage(overrides: Record<string, unknown> = {}): RawMessage {
   return {
     messageId: "message-valid",
     body: JSON.stringify({
@@ -50,7 +50,7 @@ function validMessage(overrides: Record<string, unknown> = {}): RawTelemetryMess
 }
 
 function dependencies(
-  telemetryRepository = new TestTelemetryRepository(),
+  telemetryRepository = new TestRecordRepository(),
   rejectedRecordRepository = new TestRejectedRecordRepository()
 ) {
   return {
@@ -67,7 +67,7 @@ describe("processTelemetryMessages", () => {
   });
 
   it("processes valid messages into persisted telemetry records", async () => {
-    const telemetryRepository = new TestTelemetryRepository();
+    const telemetryRepository = new TestRecordRepository();
     const rejectedRecordRepository = new TestRejectedRecordRepository();
 
     const result = await processTelemetryMessages(
@@ -97,7 +97,7 @@ describe("processTelemetryMessages", () => {
   });
 
   it("continues processing a mixed batch and persists invalid messages separately", async () => {
-    const telemetryRepository = new TestTelemetryRepository();
+    const telemetryRepository = new TestRecordRepository();
     const rejectedRecordRepository = new TestRejectedRecordRepository();
 
     const result = await processTelemetryMessages(
@@ -158,7 +158,7 @@ describe("processTelemetryMessages", () => {
   });
 
   it("rejects corrupt JSON without calling the telemetry repository", async () => {
-    const telemetryRepository = new TestTelemetryRepository();
+    const telemetryRepository = new TestRecordRepository();
     const rejectedRecordRepository = new TestRejectedRecordRepository();
 
     const result = await processTelemetryMessages(
@@ -188,7 +188,7 @@ describe("processTelemetryMessages", () => {
   });
 
   it("does not swallow repository failures so AWS can retry system errors", async () => {
-    const telemetryRepository = new TestTelemetryRepository();
+    const telemetryRepository = new TestRecordRepository();
     const rejectedRecordRepository = new TestRejectedRecordRepository();
     telemetryRepository.saveBatch.mockRejectedValueOnce(new Error("DynamoDB unavailable"));
 
