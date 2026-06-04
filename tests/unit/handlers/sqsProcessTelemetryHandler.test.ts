@@ -1,8 +1,8 @@
 import {
-  createSqsProcessorHandler,
+  createSqsProcessTelemetryHandler,
   mapSqsRecordToRawTelemetryMessage,
   type SqsEvent
-} from "../../../src/handlers/sqs-processor-handler";
+} from "../../../src/handlers/sqsProcessTelemetryHandler";
 import type {
   ProcessedRecord,
   RejectedRecord
@@ -58,7 +58,7 @@ function validBody(overrides: Record<string, unknown> = {}): string {
   });
 }
 
-describe("sqs-processor-handler", () => {
+describe("sqsProcessTelemetryHandler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -79,7 +79,7 @@ describe("sqs-processor-handler", () => {
     const telemetryRepository = new TestRecordRepository();
     const rejectedRecordRepository = new TestRejectedRecordRepository();
     const testLogger = logger();
-    const handler = createSqsProcessorHandler(() => ({
+    const handler = createSqsProcessTelemetryHandler(() => ({
       telemetryRepository,
       rejectedRecordRepository,
       logger: testLogger
@@ -102,7 +102,7 @@ describe("sqs-processor-handler", () => {
     const telemetryRepository = new TestRecordRepository();
     const rejectedRecordRepository = new TestRejectedRecordRepository();
     const testLogger = logger();
-    const handler = createSqsProcessorHandler(() => ({
+    const handler = createSqsProcessTelemetryHandler(() => ({
       telemetryRepository,
       rejectedRecordRepository,
       logger: testLogger
@@ -126,7 +126,7 @@ describe("sqs-processor-handler", () => {
     const testLogger = logger();
     const failure = new Error("DynamoDB unavailable");
     telemetryRepository.saveBatch.mockRejectedValueOnce(failure);
-    const handler = createSqsProcessorHandler(() => ({
+    const handler = createSqsProcessTelemetryHandler(() => ({
       telemetryRepository,
       rejectedRecordRepository,
       logger: testLogger

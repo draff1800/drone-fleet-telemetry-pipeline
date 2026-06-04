@@ -55,10 +55,10 @@ export function mapSqsRecordToRawTelemetryMessage(record: SqsRecord): RawTelemet
   };
 }
 
-export function createSqsProcessorHandler(
+export function createSqsProcessTelemetryHandler(
   createDependencies: DependencyFactory = createDefaultDependencies
 ) {
-  return async function sqsProcessorHandler(event: SqsEvent): Promise<ProcessingSummary> {
+  return async function sqsProcessTelemetryHandler(event: SqsEvent): Promise<ProcessingSummary> {
     const messages = event.Records.map(mapSqsRecordToRawTelemetryMessage);
     let logger = consoleLogger;
 
@@ -85,4 +85,4 @@ export function createSqsProcessorHandler(
   };
 }
 
-export const handler = createSqsProcessorHandler();
+export const handler = createSqsProcessTelemetryHandler();
