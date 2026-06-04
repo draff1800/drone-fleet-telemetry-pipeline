@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+output/
+tests/.tmp/
 .env
 .serverless/
 npm-debug.log*

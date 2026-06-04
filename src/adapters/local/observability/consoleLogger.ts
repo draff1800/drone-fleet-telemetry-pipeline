@@ -1,4 +1,4 @@
-import type { Logger } from "../ports/logger";
+import type { Logger } from "../../../ports/observability/logger";
 
 function write(level: "info" | "warn" | "error", message: string, context?: Record<string, unknown>): void {
   const entry = {

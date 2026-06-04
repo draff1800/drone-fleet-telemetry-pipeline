@@ -4,11 +4,9 @@ import type {
   RawTelemetryMessage,
   RejectedTelemetryRecord
 } from "../../../../src/core/telemetry/telemetryTypes";
-import type { Logger } from "../../../../src/ports/logger";
-import type {
-  RejectedRecordRepository,
-  TelemetryRepository
-} from "../../../../src/ports/telemetryRepository";
+import type { Logger } from "../../../../src/ports/observability/logger";
+import type { RejectedRecordRepository } from "../../../../src/ports/persistence/rejectedRecordRepository";
+import type { TelemetryRepository } from "../../../../src/ports/persistence/telemetryRepository";
 
 const fixedNow = new Date("2026-06-04T10:00:00.000Z");
 

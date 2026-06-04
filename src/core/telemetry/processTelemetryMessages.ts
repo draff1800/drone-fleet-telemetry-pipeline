@@ -6,11 +6,9 @@ import type {
   RejectedTelemetryError,
   RejectedTelemetryRecord
 } from "./telemetryTypes";
-import type { Logger } from "../../ports/logger";
-import type {
-  RejectedRecordRepository,
-  TelemetryRepository
-} from "../../ports/telemetryRepository";
+import type { Logger } from "../../ports/observability/logger";
+import type { RejectedRecordRepository } from "../../ports/persistence/rejectedRecordRepository";
+import type { TelemetryRepository } from "../../ports/persistence/telemetryRepository";
 
 export interface ProcessTelemetryDependencies {
   telemetryRepository: TelemetryRepository;
