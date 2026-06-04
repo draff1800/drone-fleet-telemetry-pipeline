@@ -1,14 +1,32 @@
-import type { TelemetryRecord } from "../../core/telemetry/telemetryRecord";
-import type { TelemetryRepository } from "../../ports/telemetryRepository";
+import type {
+  ProcessedTelemetryRecord,
+  RejectedTelemetryRecord
+} from "../../core/telemetry/telemetryTypes";
+import type {
+  RejectedRecordRepository,
+  TelemetryRepository
+} from "../../ports/telemetryRepository";
 
 export class InMemoryTelemetryRepository implements TelemetryRepository {
-  private readonly records: TelemetryRecord[] = [];
+  private readonly records: ProcessedTelemetryRecord[] = [];
 
-  async saveBatch(records: TelemetryRecord[]): Promise<void> {
+  async saveBatch(records: ProcessedTelemetryRecord[]): Promise<void> {
     this.records.push(...records);
   }
 
-  all(): TelemetryRecord[] {
+  all(): ProcessedTelemetryRecord[] {
+    return [...this.records];
+  }
+}
+
+export class InMemoryRejectedRecordRepository implements RejectedRecordRepository {
+  private readonly records: RejectedTelemetryRecord[] = [];
+
+  async saveBatch(records: RejectedTelemetryRecord[]): Promise<void> {
+    this.records.push(...records);
+  }
+
+  all(): RejectedTelemetryRecord[] {
     return [...this.records];
   }
 }

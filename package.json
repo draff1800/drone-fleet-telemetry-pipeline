@@ -7,7 +7,7 @@
     "test": "jest --config jest.config.cjs --runInBand",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "process:sample": "tsx src/adapters/local/process-sample.ts"
+    "process:samples": "tsx src/adapters/local/processSamples.ts"
   },
   "keywords": [],
   "author": "",

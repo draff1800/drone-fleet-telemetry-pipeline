@@ -1,6 +1,6 @@
-import { telemetryRecordSchema } from "../../../../src/core/telemetry/telemetryRecord";
+import { telemetryRecordSchema } from "../../../../src/core/telemetry/telemetryInput";
 
-describe("telemetryRecordSchema", () => {
+describe("telemetryInput", () => {
   it("accepts a valid telemetry record", () => {
     const parsed = telemetryRecordSchema.safeParse({
       droneId: "drone-003",
