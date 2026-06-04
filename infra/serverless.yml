@@ -1,0 +1,243 @@
+service: drone-fleet-telemetry-pipeline
+
+frameworkVersion: "4"
+
+configValidationMode: error
+
+plugins:
+  - serverless-esbuild
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  architecture: arm64
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'eu-west-1'}
+  memorySize: 256
+  timeout: 10
+  logRetentionInDays: 14
+  deploymentMethod: direct
+  httpApi:
+    cors: true
+  environment:
+    NODE_OPTIONS: --enable-source-maps
+    STAGE: ${sls:stage}
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    target: node20
+    platform: node
+    concurrency: 10
+    exclude:
+      - "@aws-sdk/*"
+  tableNames:
+    telemetry: ${self:service}-${sls:stage}-drone-telemetry
+    rejected: ${self:service}-${sls:stage}-rejected-telemetry-records
+  queueNames:
+    ingestion: ${self:service}-${sls:stage}-ingestion
+    deadLetter: ${self:service}-${sls:stage}-ingestion-dlq
+
+package:
+  individually: true
+
+functions:
+  ingestTelemetry:
+    handler: ../src/handlers/apiIngestHandler.handler
+    description: Accepts telemetry over HTTP and enqueues it for asynchronous processing.
+    role: IngestTelemetryLambdaRole
+    environment:
+      INGESTION_QUEUE_URL:
+        Ref: IngestionQueue
+    events:
+      - httpApi:
+          method: POST
+          path: /telemetry
+
+  processTelemetry:
+    handler: ../src/handlers/sqsProcessTelemetryHandler.handler
+    description: Validates telemetry messages and stores accepted/rejected records.
+    role: ProcessTelemetryLambdaRole
+    timeout: 30
+    reservedConcurrency: 5
+    environment:
+      TELEMETRY_TABLE_NAME: ${self:custom.tableNames.telemetry}
+      REJECTED_TABLE_NAME: ${self:custom.tableNames.rejected}
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - IngestionQueue
+              - Arn
+          batchSize: 10
+          maximumBatchingWindow: 5
+
+resources:
+  Resources:
+    IngestionDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.queueNames.deadLetter}
+        MessageRetentionPeriod: 1209600
+
+    IngestionQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.queueNames.ingestion}
+        VisibilityTimeout: 90
+        MessageRetentionPeriod: 345600
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt:
+              - IngestionDeadLetterQueue
+              - Arn
+          maxReceiveCount: 5
+
+    DroneTelemetryTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.telemetry}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: eventType
+            AttributeType: S
+          - AttributeName: timestamp
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: EventTypeTimeIndex
+            KeySchema:
+              - AttributeName: eventType
+                KeyType: HASH
+              - AttributeName: timestamp
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        SSESpecification:
+          SSEEnabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+
+    RejectedTelemetryRecordsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableNames.rejected}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        SSESpecification:
+          SSEEnabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+
+    IngestTelemetryLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: SendTelemetryToIngestionQueue
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - sqs:SendMessage
+                  Resource:
+                    Fn::GetAtt:
+                      - IngestionQueue
+                      - Arn
+
+    ProcessTelemetryLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: ConsumeTelemetryFromIngestionQueue
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - sqs:ChangeMessageVisibility
+                    - sqs:DeleteMessage
+                    - sqs:GetQueueAttributes
+                    - sqs:ReceiveMessage
+                  Resource:
+                    Fn::GetAtt:
+                      - IngestionQueue
+                      - Arn
+          - PolicyName: WriteTelemetryRecords
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                  Resource:
+                    - Fn::GetAtt:
+                        - DroneTelemetryTable
+                        - Arn
+                    - Fn::GetAtt:
+                        - RejectedTelemetryRecordsTable
+                        - Arn
+
+  Outputs:
+    TelemetryEndpoint:
+      Description: HTTP API endpoint for telemetry ingestion.
+      Value:
+        Fn::Sub: https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/telemetry
+    IngestionQueueUrl:
+      Description: URL of the SQS telemetry ingestion queue.
+      Value:
+        Ref: IngestionQueue
+    IngestionDeadLetterQueueUrl:
+      Description: URL of the SQS dead-letter queue for failed telemetry messages.
+      Value:
+        Ref: IngestionDeadLetterQueue
+    DroneTelemetryTableName:
+      Description: DynamoDB table for accepted telemetry records.
+      Value:
+        Ref: DroneTelemetryTable
+    RejectedTelemetryRecordsTableName:
+      Description: DynamoDB table for rejected telemetry records.
+      Value:
+        Ref: RejectedTelemetryRecordsTable
