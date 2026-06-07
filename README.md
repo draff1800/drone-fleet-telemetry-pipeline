@@ -152,7 +152,7 @@ Current Strategy:
 - Processed batch summary (`received`, `processed` and `rejected`)
 - Error context for system failures
 
-Recommended future additions:
+Future additions:
 
 - CloudWatch metrics and dashboards
 - Alarms for DLQ depth, queue age, rejection rate and processor errors
