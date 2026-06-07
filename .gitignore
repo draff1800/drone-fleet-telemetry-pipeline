@@ -5,4 +5,5 @@ output/
 tests/.tmp/
 .env
 .serverless/
+.esbuild/
 npm-debug.log*

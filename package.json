@@ -17,7 +17,6 @@
     "@aws-sdk/client-dynamodb": "^3.1061.0",
     "@aws-sdk/client-sqs": "^3.1061.0",
     "@aws-sdk/lib-dynamodb": "^3.1061.0",
-    "uuid": "^14.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

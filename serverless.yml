@@ -7,6 +7,9 @@ configValidationMode: error
 plugins:
   - serverless-esbuild
 
+build:
+  esbuild: false
+
 provider:
   name: aws
   runtime: nodejs20.x
@@ -46,7 +49,7 @@ package:
 
 functions:
   ingestTelemetry:
-    handler: ../src/handlers/apiIngestHandler.handler
+    handler: src/handlers/apiIngestHandler.handler
     description: Accepts telemetry over HTTP and enqueues it for asynchronous processing.
     role: IngestTelemetryLambdaRole
     environment:
@@ -58,11 +61,10 @@ functions:
           path: /telemetry
 
   processTelemetry:
-    handler: ../src/handlers/sqsProcessTelemetryHandler.handler
+    handler: src/handlers/sqsProcessTelemetryHandler.handler
     description: Validates telemetry messages and stores accepted/rejected records.
     role: ProcessTelemetryLambdaRole
     timeout: 30
-    reservedConcurrency: 5
     environment:
       TELEMETRY_TABLE_NAME: ${self:custom.tableNames.telemetry}
       REJECTED_TABLE_NAME: ${self:custom.tableNames.rejected}
