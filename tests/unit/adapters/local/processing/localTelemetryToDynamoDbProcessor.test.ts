@@ -85,7 +85,46 @@ describe("localTelemetryToDynamoDbProcessor", () => {
   });
 
   it("processes a local NDJSON file through DynamoDB repositories using local table config", async () => {
+    // ARRANGE
     const inputPath = join(tmpRoot, "mixed.ndjson");
+    const dbConfig = {
+      endpoint: "http://localhost:8000",
+      region: "eu-west-1",
+      telemetryTableName: "TelemetryTable",
+      rejectedTelemetryTableName: "RejectedTelemetryTable"
+    };
+    const expectedProcessedRecords = [
+      expect.objectContaining({
+        droneId: "drone-001",
+        recordId: "drone-001#2026-06-03T20:00:00.000Z#SENSOR_READING"
+      })
+    ];
+    const expectedRejectedRecords = [
+      expect.objectContaining({
+        messageId: "line-2",
+        reason: "VALIDATION_FAILED"
+      }),
+      expect.objectContaining({
+        messageId: "line-3",
+        reason: "INVALID_JSON"
+      })
+    ];
+    const expectedResult = {
+      inputPath,
+      summary: {
+        received: 3,
+        processed: 1,
+        rejected: 2
+      },
+      storedCounts: {
+        telemetry: 1,
+        rejected: 2
+      },
+      tables: {
+        telemetry: "TelemetryTable",
+        rejected: "RejectedTelemetryTable"
+      }
+    };
 
     await writeFile(
       inputPath,
@@ -102,23 +141,16 @@ describe("localTelemetryToDynamoDbProcessor", () => {
       "utf8"
     );
 
-    const result = await processTelemetryFileToDynamoDb({
+    // ACT
+    const actualResult = await processTelemetryFileToDynamoDb({
       inputPath,
-      dbConfig: {
-        endpoint: "http://localhost:8000",
-        region: "eu-west-1",
-        telemetryTableName: "TelemetryTable",
-        rejectedTelemetryTableName: "RejectedTelemetryTable"
-      },
+      dbConfig,
       logger
     });
 
-    expect(createLocalDynamoDbDocumentClient).toHaveBeenCalledWith({
-      endpoint: "http://localhost:8000",
-      region: "eu-west-1",
-      telemetryTableName: "TelemetryTable",
-      rejectedTelemetryTableName: "RejectedTelemetryTable"
-    });
+    // ASSERT
+    expect(actualResult).toEqual(expectedResult);
+    expect(createLocalDynamoDbDocumentClient).toHaveBeenCalledWith(dbConfig);
     expect(DynamoDbTelemetryRepository).toHaveBeenCalledWith({
       tableName: "TelemetryTable",
       client: mockDbDocumentClient
@@ -127,42 +159,16 @@ describe("localTelemetryToDynamoDbProcessor", () => {
       tableName: "RejectedTelemetryTable",
       client: mockDbDocumentClient
     });
-    expect(mockTelemetryRepositoryInstances[0]?.saveBatch).toHaveBeenCalledWith([
-      expect.objectContaining({
-        droneId: "drone-001",
-        recordId: "drone-001#2026-06-03T20:00:00.000Z#SENSOR_READING"
-      })
-    ]);
-    expect(mockRejectedTelemetryRepositoryInstances[0]?.saveBatch).toHaveBeenCalledWith([
-      expect.objectContaining({
-        messageId: "line-2",
-        reason: "VALIDATION_FAILED"
-      }),
-      expect.objectContaining({
-        messageId: "line-3",
-        reason: "INVALID_JSON"
-      })
-    ]);
+    expect(mockTelemetryRepositoryInstances[0]?.saveBatch).toHaveBeenCalledWith(
+      expectedProcessedRecords
+    );
+    expect(mockRejectedTelemetryRepositoryInstances[0]?.saveBatch).toHaveBeenCalledWith(
+      expectedRejectedRecords
+    );
     expect(countLocalDynamoDbTableItems).toHaveBeenCalledWith(mockDbDocumentClient, "TelemetryTable");
     expect(countLocalDynamoDbTableItems).toHaveBeenCalledWith(
       mockDbDocumentClient,
       "RejectedTelemetryTable"
     );
-    expect(result).toEqual({
-      inputPath,
-      summary: {
-        received: 3,
-        processed: 1,
-        rejected: 2
-      },
-      storedCounts: {
-        telemetry: 1,
-        rejected: 2
-      },
-      tables: {
-        telemetry: "TelemetryTable",
-        rejected: "RejectedTelemetryTable"
-      }
-    });
   });
 });

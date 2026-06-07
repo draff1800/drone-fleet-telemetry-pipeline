@@ -3,6 +3,7 @@ service: drone-fleet-telemetry-pipeline
 frameworkVersion: "4"
 
 configValidationMode: error
+useDotenv: true
 
 plugins:
   - serverless-esbuild
@@ -53,9 +54,12 @@ custom:
     concurrency: 10
     exclude:
       - "@aws-sdk/*"
-  tableNames:
+  defaultTableNames:
     telemetry: ${self:service}-${sls:stage}-drone-telemetry
     rejected: ${self:service}-${sls:stage}-rejected-telemetry-records
+  tableNames:
+    telemetry: ${env:TELEMETRY_TABLE_NAME, self:custom.defaultTableNames.telemetry}
+    rejected: ${env:REJECTED_TELEMETRY_TABLE_NAME, self:custom.defaultTableNames.rejected}
   queueNames:
     ingestion: ${self:service}-${sls:stage}-ingestion
     deadLetter: ${self:service}-${sls:stage}-ingestion-dlq

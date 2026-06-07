@@ -37,9 +37,27 @@ describe("localTelemetryProcessor", () => {
   });
 
   it("processes a local NDJSON file and writes records for inspection", async () => {
+    // ARRANGE
     const inputPath = join(tmpRoot, "mixed.ndjson");
     const processedRecordsPath = join(tmpRoot, "output", "processed-records.json");
     const rejectedRecordsPath = join(tmpRoot, "output", "rejected-records.json");
+    const expectedSummary = { received: 3, processed: 1, rejected: 2 };
+    const expectedProcessedRecords = [
+      expect.objectContaining({
+        droneId: "drone-001",
+        recordId: "drone-001#2026-06-03T20:00:00.000Z#SENSOR_READING"
+      })
+    ];
+    const expectedRejectedRecords = [
+      expect.objectContaining({
+        messageId: "line-2",
+        reason: "VALIDATION_FAILED"
+      }),
+      expect.objectContaining({
+        messageId: "line-3",
+        reason: "INVALID_JSON"
+      })
+    ];
 
     await writeFile(
       inputPath,
@@ -56,7 +74,8 @@ describe("localTelemetryProcessor", () => {
       "utf8"
     );
 
-    const result = await processTelemetryFile({
+    // ACT
+    const actualResult = await processTelemetryFile({
       inputPath,
       outputPaths: {
         processedRecords: processedRecordsPath,
@@ -65,38 +84,23 @@ describe("localTelemetryProcessor", () => {
       logger
     });
 
-    expect(result.summary).toEqual({ received: 3, processed: 1, rejected: 2 });
-    expect(result.outputPaths.processedRecords).toBe(processedRecordsPath);
-    expect(result.outputPaths.rejectedRecords).toBe(rejectedRecordsPath);
-    expect(result.records.processed).toHaveLength(1);
-    expect(result.records.rejected).toHaveLength(2);
-
-    const processedRecords = JSON.parse(await readFile(processedRecordsPath, "utf8")) as Array<{
+    const actualProcessedRecords = JSON.parse(await readFile(processedRecordsPath, "utf8")) as Array<{
       droneId: string;
       recordId: string;
     }>;
 
-    const rejectedRecords = JSON.parse(await readFile(rejectedRecordsPath, "utf8")) as Array<{
+    const actualRejectedRecords = JSON.parse(await readFile(rejectedRecordsPath, "utf8")) as Array<{
       messageId: string;
       reason: string;
     }>;
 
-    expect(processedRecords).toEqual([
-      expect.objectContaining({
-        droneId: "drone-001",
-        recordId: "drone-001#2026-06-03T20:00:00.000Z#SENSOR_READING"
-      })
-    ]);
-
-    expect(rejectedRecords).toEqual([
-      expect.objectContaining({
-        messageId: "line-2",
-        reason: "VALIDATION_FAILED"
-      }),
-      expect.objectContaining({
-        messageId: "line-3",
-        reason: "INVALID_JSON"
-      })
-    ]);
+    // ASSERT
+    expect(actualResult.summary).toEqual(expectedSummary);
+    expect(actualResult.outputPaths.processedRecords).toBe(processedRecordsPath);
+    expect(actualResult.outputPaths.rejectedRecords).toBe(rejectedRecordsPath);
+    expect(actualResult.records.processed).toHaveLength(1);
+    expect(actualResult.records.rejected).toHaveLength(2);
+    expect(actualProcessedRecords).toEqual(expectedProcessedRecords);
+    expect(actualRejectedRecords).toEqual(expectedRejectedRecords);
   });
 });
