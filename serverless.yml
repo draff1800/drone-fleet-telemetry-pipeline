@@ -21,7 +21,23 @@ provider:
   logRetentionInDays: 14
   deploymentMethod: direct
   httpApi:
-    cors: true
+    cors:
+      allowedHeaders:
+        - Authorization
+        - Content-Type
+      allowedMethods:
+        - POST
+      allowedOrigins:
+        - "*"
+    authorizers:
+      telemetrySharedTokenAuthorizer:
+        type: request
+        functionName: authorizeTelemetryIngest
+        identitySource:
+          - $request.header.Authorization
+        enableSimpleResponses: true
+        payloadVersion: "2.0"
+        resultTtlInSeconds: 300
   environment:
     NODE_OPTIONS: --enable-source-maps
     STAGE: ${sls:stage}
@@ -48,6 +64,13 @@ package:
   individually: true
 
 functions:
+  authorizeTelemetryIngest:
+    handler: src/handlers/sharedTokenAuthorizer.handler
+    description: Authorizes telemetry ingestion requests with a shared bearer token.
+    role: AuthorizerLambdaRole
+    environment:
+      INGEST_AUTH_TOKEN: ${env:INGEST_AUTH_TOKEN}
+
   ingestTelemetry:
     handler: src/handlers/apiIngestHandler.handler
     description: Accepts telemetry over HTTP and enqueues it for asynchronous processing.
@@ -59,6 +82,8 @@ functions:
       - httpApi:
           method: POST
           path: /telemetry
+          authorizer:
+            name: telemetrySharedTokenAuthorizer
 
   processTelemetry:
     handler: src/handlers/sqsProcessTelemetryHandler.handler
@@ -78,6 +103,13 @@ functions:
           maximumBatchingWindow: 5
 
 resources:
+  extensions:
+    HttpApiStage:
+      Properties:
+        DefaultRouteSettings:
+          ThrottlingBurstLimit: 5
+          ThrottlingRateLimit: 2
+
   Resources:
     IngestionDeadLetterQueue:
       Type: AWS::SQS::Queue
@@ -177,6 +209,21 @@ resources:
                     Fn::GetAtt:
                       - IngestionQueue
                       - Arn
+
+    AuthorizerLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
     ProcessTelemetryLambdaRole:
       Type: AWS::IAM::Role
