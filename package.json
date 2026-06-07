@@ -7,7 +7,11 @@
     "test": "jest --config jest.config.cjs --runInBand",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "process:sample": "tsx src/adapters/local/processTelemetryFileCommand.ts samples/telemetry-mixed.ndjson"
+    "process:sample": "tsx src/adapters/local/processTelemetryFileCommand.ts samples/telemetry-mixed.ndjson",
+    "dynamodb:up": "docker compose up -d dynamodb-local",
+    "dynamodb:setup": "tsx src/adapters/local/setupLocalDynamoDb.ts",
+    "process:sample:dynamodb": "tsx src/adapters/local/processTelemetryFileToDynamoDbCommand.ts samples/telemetry-mixed.ndjson",
+    "dynamodb:down": "docker compose down"
   },
   "keywords": [],
   "author": "",

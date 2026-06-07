@@ -3,7 +3,7 @@ import { processTelemetryFile } from "./processTelemetryFile";
 
 async function main(): Promise<void> {
   const result = await processTelemetryFile({
-    inputPath: process.argv[2] ?? "samples/mixed-telemetry.ndjson",
+    inputPath: process.argv[2] ?? "samples/telemetry-mixed.ndjson",
     logger: consoleLogger
   });
 
