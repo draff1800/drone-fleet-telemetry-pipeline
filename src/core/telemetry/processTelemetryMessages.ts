@@ -1,20 +1,20 @@
-import { telemetryRecordSchema, type TelemetryRecord } from "./telemetryInput";
+import { telemetryInputSchema, type TelemetryInput } from "./telemetryInputSchema";
 import type {
   ProcessedRecord,
   ProcessingSummary,
   RawMessage,
-  RejectedError,
+  RejectionError,
   RejectedRecord
-} from "./telemetryTypes";
+} from "./telemetryProcessingTypes";
 import type { Logger } from "../../ports/observability/logger";
-import type { RejectedRecordRepository } from "../../ports/persistence/rejectedRecordRepository";
-import type { RecordRepository } from "../../ports/persistence/telemetryRepository";
+import type { RejectedTelemetryRepository } from "../../ports/persistence/rejectedTelemetryRepository";
+import type { TelemetryRepository } from "../../ports/persistence/telemetryRepository";
 
-export interface ProcessTelemetryDependencies {
-  telemetryRepository: RecordRepository;
-  rejectedRecordRepository: RejectedRecordRepository;
+export interface TelemetryProcessingDependencies {
+  telemetryRepository: TelemetryRepository;
+  rejectedTelemetryRepository: RejectedTelemetryRepository;
+  getCurrentTime?: () => Date;
   logger: Logger;
-  now?: () => Date;
 }
 
 function formatIssuePath(path: PropertyKey[]): string {
@@ -23,7 +23,7 @@ function formatIssuePath(path: PropertyKey[]): string {
 
 function formatValidationIssues(
   issues: Array<{ path: PropertyKey[]; code?: string; message: string }>
-): RejectedError[] {
+): RejectionError[] {
   return issues.map((issue) => ({
     path: formatIssuePath(issue.path),
     code: issue.code ?? "unknown",
@@ -31,11 +31,11 @@ function formatValidationIssues(
   }));
 }
 
-function createRecordId(record: TelemetryRecord): string {
+function createRecordId(record: TelemetryInput): string {
   return `${record.droneId}#${record.timestamp}#${record.eventType}`;
 }
 
-function transformTelemetryRecord(record: TelemetryRecord, processedAt: string): ProcessedRecord {
+function processTelemetryRecord(record: TelemetryInput, processedAt: string): ProcessedRecord {
   return {
     recordId: createRecordId(record),
     processedAt,
@@ -46,7 +46,7 @@ function transformTelemetryRecord(record: TelemetryRecord, processedAt: string):
 function createRejectedRecord(
   message: RawMessage,
   reason: RejectedRecord["reason"],
-  errors: RejectedError[],
+  errors: RejectionError[],
   rejectedAt: string
 ): RejectedRecord {
   return {
@@ -60,11 +60,12 @@ function createRejectedRecord(
 
 export async function processTelemetryMessages(
   messages: RawMessage[],
-  dependencies: ProcessTelemetryDependencies
+  dependencies: TelemetryProcessingDependencies
 ): Promise<ProcessingSummary> {
   const processedRecords: ProcessedRecord[] = [];
   const rejectedRecords: RejectedRecord[] = [];
-  const now = dependencies.now ?? (() => new Date());
+
+  const currentTime = dependencies.getCurrentTime ?? (() => new Date());
 
   for (const message of messages) {
     let parsedBody: unknown;
@@ -73,7 +74,7 @@ export async function processTelemetryMessages(
       parsedBody = JSON.parse(message.body);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const rejectedAt = now().toISOString();
+      const rejectedAt = currentTime().toISOString();
 
       rejectedRecords.push(
         createRejectedRecord(
@@ -96,11 +97,11 @@ export async function processTelemetryMessages(
       continue;
     }
 
-    const parsedRecord = telemetryRecordSchema.safeParse(parsedBody);
+    const parsedRecord = telemetryInputSchema.safeParse(parsedBody);
 
     if (!parsedRecord.success) {
       const issues = formatValidationIssues(parsedRecord.error.issues);
-      const rejectedAt = now().toISOString();
+      const rejectedAt = currentTime().toISOString();
 
       rejectedRecords.push(
         createRejectedRecord(message, "VALIDATION_FAILED", issues, rejectedAt)
@@ -112,11 +113,13 @@ export async function processTelemetryMessages(
       continue;
     }
 
-    processedRecords.push(transformTelemetryRecord(parsedRecord.data, now().toISOString()));
+    processedRecords.push(
+      processTelemetryRecord(parsedRecord.data, currentTime().toISOString())
+    );
   }
 
   if (rejectedRecords.length > 0) {
-    await dependencies.rejectedRecordRepository.saveBatch(rejectedRecords);
+    await dependencies.rejectedTelemetryRepository.saveBatch(rejectedRecords);
   }
 
   if (processedRecords.length > 0) {

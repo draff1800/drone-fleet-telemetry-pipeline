@@ -1,9 +1,21 @@
+# Local environment and secrets
+.env
+
+# Dependencies
 node_modules/
+
+# Serverless packaging
+.serverless/
+.esbuild/
+
+# Build and test output
 dist/
 coverage/
 output/
 tests/.tmp/
-.env
-.serverless/
-.esbuild/
+
+# Logs
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

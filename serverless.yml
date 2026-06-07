@@ -65,14 +65,14 @@ package:
 
 functions:
   authorizeTelemetryIngest:
-    handler: src/handlers/sharedTokenAuthorizer.handler
+    handler: src/adapters/aws/handlers/telemetryIngestAuthorizerHandler.handler
     description: Authorizes telemetry ingestion requests with a shared bearer token.
     role: AuthorizerLambdaRole
     environment:
       INGEST_AUTH_TOKEN: ${env:INGEST_AUTH_TOKEN}
 
   ingestTelemetry:
-    handler: src/handlers/apiIngestHandler.handler
+    handler: src/adapters/aws/handlers/telemetryIngestHandler.handler
     description: Accepts telemetry over HTTP and enqueues it for asynchronous processing.
     role: IngestTelemetryLambdaRole
     environment:
@@ -86,13 +86,13 @@ functions:
             name: telemetrySharedTokenAuthorizer
 
   processTelemetry:
-    handler: src/handlers/sqsProcessTelemetryHandler.handler
+    handler: src/adapters/aws/handlers/telemetrySqsHandler.handler
     description: Validates telemetry messages and stores accepted/rejected records.
     role: ProcessTelemetryLambdaRole
     timeout: 30
     environment:
       TELEMETRY_TABLE_NAME: ${self:custom.tableNames.telemetry}
-      REJECTED_TABLE_NAME: ${self:custom.tableNames.rejected}
+      REJECTED_TELEMETRY_TABLE_NAME: ${self:custom.tableNames.rejected}
     events:
       - sqs:
           arn:

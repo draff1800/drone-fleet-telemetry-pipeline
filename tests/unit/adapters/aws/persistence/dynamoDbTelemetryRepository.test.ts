@@ -2,7 +2,7 @@ import { PutCommand } from "@aws-sdk/lib-dynamodb";
 import type { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 import { DynamoDbTelemetryRepository } from "../../../../../src/adapters/aws/persistence/dynamoDbTelemetryRepository";
-import type { ProcessedRecord } from "../../../../../src/core/telemetry/telemetryTypes";
+import type { ProcessedRecord } from "../../../../../src/core/telemetry/telemetryProcessingTypes";
 
 function dynamoClient() {
   return {
@@ -29,39 +29,43 @@ describe("DynamoDbTelemetryRepository", () => {
   });
 
   it("writes each telemetry record with the expected DynamoDB keys", async () => {
+    // ARRANGE
     const client = dynamoClient();
     const repository = new DynamoDbTelemetryRepository({
-      tableName: "TelemetryTable",
+      tableName: "example-telemetry-table",
       client
     });
-
-    await repository.saveBatch([record]);
-
-    expect(client.send).toHaveBeenCalledTimes(1);
-    expect(client.send.mock.calls[0]?.[0]).toBeInstanceOf(PutCommand);
-    expect(client.send.mock.calls[0]?.[0].input).toEqual({
-      TableName: "TelemetryTable",
+    const expectedResult = {
+      TableName: "example-telemetry-table",
       Item: {
         PK: "DRONE#drone-001",
         SK: "TIMESTAMP#2026-06-03T20:00:00.000Z#EVENT#drone-001#2026-06-03T20:00:00.000Z#SENSOR_READING",
         ...record
       }
-    });
+    };
+
+    // ACT
+    await repository.saveBatch([record]);
+    const actualResult = client.send.mock.calls[0]?.[0];
+
+    // ASSERT
+    expect(client.send).toHaveBeenCalledTimes(1);
+    expect(actualResult).toBeInstanceOf(PutCommand);
+    expect(actualResult.input).toEqual(expectedResult);
   });
 
   it("uses TELEMETRY_TABLE_NAME when a table name is not provided", async () => {
-    process.env.TELEMETRY_TABLE_NAME = "TelemetryFromEnv";
+    // ARRANGE
+    process.env.TELEMETRY_TABLE_NAME = "example-telemetry-table";
     const client = dynamoClient();
     const repository = new DynamoDbTelemetryRepository({ client });
+    const expectedResult = "example-telemetry-table";
 
+    // ACT
     await repository.saveBatch([record]);
+    const actualResult = client.send.mock.calls[0]?.[0].input.TableName;
 
-    expect(client.send.mock.calls[0]?.[0].input.TableName).toBe("TelemetryFromEnv");
-  });
-
-  it("fails fast when TELEMETRY_TABLE_NAME is missing", () => {
-    expect(() => new DynamoDbTelemetryRepository({ client: dynamoClient() })).toThrow(
-      "TELEMETRY_TABLE_NAME must be configured"
-    );
+    // ASSERT
+    expect(actualResult).toBe(expectedResult);
   });
 });

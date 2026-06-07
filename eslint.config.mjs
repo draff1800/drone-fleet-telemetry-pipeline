@@ -1,6 +1,29 @@
+import tseslint from "typescript-eslint";
+
 export default [
   {
-    ignores: ["dist/**", "node_modules/**", "coverage/**", "**/*.ts"]
+    ignores: [
+      "coverage/**",
+      "dist/**",
+      "node_modules/**",
+      "output/**",
+      ".serverless/**",
+      ".esbuild/**",
+      "tests/.tmp/**"
+    ]
+  },
+  ...tseslint.configs.recommended,
+  {
+    files: ["**/*.ts"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname
+      }
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error"
+    }
   },
   {
     files: ["**/*.js", "**/*.cjs", "**/*.mjs"],

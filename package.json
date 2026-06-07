@@ -2,21 +2,19 @@
   "name": "drone-fleet-telemetry-pipeline",
   "version": "1.0.0",
   "description": "An AWS Serverless pipeline for ingesting, validating, transforming, and storing drone fleet telemetry events.",
-  "main": "dist/index.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "commonjs",
   "scripts": {
+    "process:sample": "tsx src/adapters/local/runners/runLocalTelemetryProcessor.ts samples/telemetry-mixed.ndjson",
+    "dynamodb:up": "docker compose up -d dynamodb-local",
+    "dynamodb:setup": "tsx src/adapters/local/persistence/local-dynamo-db/setupLocalDynamoDb.ts",
+    "process:sample:dynamodb": "tsx src/adapters/local/runners/runLocalTelemetryToDynamoDbProcessor.ts samples/telemetry-mixed.ndjson",
+    "dynamodb:down": "docker compose down",
     "test": "jest --config jest.config.cjs --runInBand",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
-    "process:sample": "tsx src/adapters/local/processTelemetryFileCommand.ts samples/telemetry-mixed.ndjson",
-    "dynamodb:up": "docker compose up -d dynamodb-local",
-    "dynamodb:setup": "tsx src/adapters/local/setupLocalDynamoDb.ts",
-    "process:sample:dynamodb": "tsx src/adapters/local/processTelemetryFileToDynamoDbCommand.ts samples/telemetry-mixed.ndjson",
-    "dynamodb:down": "docker compose down"
+    "lint": "eslint ."
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1061.0",
     "@aws-sdk/client-sqs": "^3.1061.0",
@@ -31,6 +29,7 @@
     "serverless-esbuild": "^1.57.2",
     "ts-jest": "^29.4.11",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.1"
   }
 }
