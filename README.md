@@ -28,7 +28,7 @@ Core behaviours:
 
 | Area | Choice |
 |------|--------|
-| Language | TypeScript / Node.js 20 |
+| Language | TypeScript / Node.js 24 |
 | Validation | Zod |
 | Local Input | NDJSON sample files |
 | Local Persistence | In-memory OR DynamoDB (Docker Compose) |
@@ -57,11 +57,13 @@ Core functionality organised via Hexagonal Architecture (`ports` and `adapters`)
 
 ### 🏗️ System Architecture
 
+The pipeline can be run locally, or on the cloud:
+
 ```mermaid
 flowchart LR
   LocalHeader["LOCAL"] --> L1["NDJSON file"] --> L2["Local Runner"] --> L3["Core Processor"] --> L4["Persistence Adapter"] --> L5["JSON Files<br/>OR DynamoDB Tables"]
 
-  AwsHeader["AWS"] --> A1["HTTP JSON"] --> A2["API Gateway"] --> A3["Authorizer"] --> A4["Ingest Lambda"] --> A5["SQS Queue"] --> A6["Processor Lambda<br/>(uses Core Processor)"] --> A7["DynamoDB Tables<br/>(Accepted / Rejected)"]
+  AwsHeader["AWS"] --> A1["HTTP JSON"] --> A2["API Gateway"] --> A3["Authorizer Lambda"] --> A4["Ingest Lambda"] --> A5["SQS Queue"] --> A6["Processor Lambda<br/>(uses Core Processor)"] --> A7["DynamoDB Tables<br/>(Accepted / Rejected)"]
   A5 -. retry exhaustion .-> A8["DLQ"]
 
   classDef laneHeader fill:#111827,color:#ffffff,stroke:#111827,font-weight:bold;
@@ -104,7 +106,7 @@ Unknown `telemetryData` fields are preserved because drone event payloads are li
 
 ### 🗂️ Data Model
 
-Accepted Telemetry Records:
+Accepted Telemetry Records stored as:
 
 | Field | Purpose |
 |-------|---------|
@@ -112,13 +114,13 @@ Accepted Telemetry Records:
 | `SK = TIMESTAMP#<timestamp>#EVENT#<recordId>` | Order drone events by time |
 | `recordId` | Stable derived event identifier |
 | `processedAt` | Processing timestamp |
-| original fields | source telemetry payload |
+| Source fields | `droneId`, `timestamp`, `eventType`, `statusCode` and `telemetryData` |
 
 | Index | Partition Key | Sort Key | Purpose |
 |-------|-----------|------|----------------|
 | `EventTypeTimeIndex` | `eventType` | `timestamp` | Query Event Types within a time window |
 
-Rejected Telemetry Records:
+Rejected Telemetry Records stored as:
 
 | Field | Purpose |
 |-------|---------|
@@ -174,6 +176,23 @@ Defined in `serverless.yml`:
 | DynamoDB | Stores valid and invalid telemetry records |
 | SQS DLQ | Protects main queue from, and preserves, repeatedly failing messages |
 | IAM roles | Each Lambda has least-privilege access for security reasons |
+
+### 💎 SCORPS Review
+
+| Pillar | Current Approach |
+|--------|------------------|
+| Security | Bearer authorization, timing-safe token comparison, least-privilege IAM, no committed secrets, deployed-DynamoDB encryption |
+| Cost | API Gateway/Lambdas/SQS scale to zero, DynamoDB pay-per-request, bounded log retention |
+| Op-Ex | Local runner for fast review, structured JSON logs, rejected-record table for investigations, Serverless IaC, CloudWatch log retention |
+| Reliability | SQS buffering, retries, DLQ, per-record data rejection, DynamoDB Point-in-Time-Recovery |
+| Performance | Asynchronous ingest, SQS batching, query-focused DynamoDB keys |
+| Scalability | Auto-managed AWS services, async decoupling, event-type/time index |
+
+### ⚖️ Trade-Offs
+
+- Full schema checks happen in the Processor, not the Ingest Lambda, in order to capture all validation failures.
+- Current SQS handling retries the whole batch on persistence failure. Simple and reliable, but partial responses could reduce duplicate processing.
+- DynamoDB was chosen for low-latency lookups (e.g. Events by Drone, Errors by Time). For larger-scale or longer-term analytics, events could be exported to S3 and queried using Athena.
 
 ### 🛠️ Setup
 
@@ -390,29 +409,12 @@ Envisioned Integration Testing Overview:
 
 Most integration tests would be local and fast, with a small number of real AWS smoke tests for deployment confidence.
 
-### 💎 SCORPS Review
-
-| Pillar | Current Approach |
-|--------|------------------|
-| Security | Bearer authorization, timing-safe token comparison, least-privilege IAM, no committed secrets, deployed-DynamoDB encryption |
-| Cost | API Gateway/Lambdas/SQS scale to zero, DynamoDB pay-per-request, bounded log retention |
-| Op-Ex | Local runner for fast review, structured JSON logs, rejected-record table for investigations, Serverless IaC, CloudWatch log retention |
-| Reliability | SQS buffering, retries, DLQ, per-record data rejection, DynamoDB Point-in-Time-Recovery |
-| Performance | Asynchronous ingest, SQS batching, query-focused DynamoDB keys |
-| Scalability | Auto-managed AWS services, async decoupling, event-type/time index |
-
 ### ❓ Assumptions
 
 - Telemetry sent to AWS arrives as JSON messages
 - Telemetry is absorbed locally as NDJSON, with one record per line
 - Unknown fields inside `telemetryData` should be retained
 - Shared-token auth is acceptable for the scope of this project
-
-### ⚖️ Trade-Offs
-
-- Full schema checks happen in the Processor, not the Ingest Lambda, in order to capture all validation failures.
-- Current SQS handling retries the whole batch on persistence failure. Simple and reliable, but partial responses could reduce duplicate processing.
-- DynamoDB was chosen for low-latency lookups (e.g. Events by Drone, Errors by Time). For larger-scale or longer-term analytics, events could be exported to S3 and queried using Athena.
 
 ### 🧠 AI Usage
 
@@ -431,11 +433,12 @@ A key design principle throughout was clarity and reviewability:
 
 | Area | Improvement |
 |------|-------------|
+| Architecture | Implement IoT Core to simplify and scale ingestion |
 | SQS Processing | Add partial batch failure responses so one persistence failure does not force successful records to be retried |
 | Idempotency | Use conditional DynamoDB writes (checking `recordId`) to protect against duplicate delivery |
 | Integration Tests | Implement Testcontainers, LocalStack, and CI smoke tests |
 | Observability | Add CloudWatch dashboards, alarms, and end-to-end correlation IDs from ingest to processor |
 | Data Evolution | Add schema versioning and contract documentation |
-| Recovery | Add DLQ replay tooling |
-| Security | Implement per-drone credentials, signed requests and secret rotation |
+| Recovery | Add DLQ replay tooling and corrupt data handling |
+| Security | Per-drone credentials, signed requests and secret rotation |
 | API Documentation | Add OpenAPI documentation |
